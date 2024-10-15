@@ -196,8 +196,8 @@ const Dashboard = ({ children }) => { // <-- Destructure children here
           <span className="profile-name">Guest</span>
         </ProfileHeader>
         <SidebarMenu>
-          <Link to="/dashboard" style={{ textDecoration: 'none' }}>
-            <SidebarItem active={window.location.pathname === '/dashboard'} isSidebarOpen={isSidebarOpen}>
+          <Link to="/blackboard" style={{ textDecoration: 'none' }}>
+            <SidebarItem active={window.location.pathname === '/blackboard'} isSidebarOpen={isSidebarOpen}>
               <FaTh className='icon' />
               <span>Dashboard</span>
             </SidebarItem>
@@ -214,6 +214,12 @@ const Dashboard = ({ children }) => { // <-- Destructure children here
               <span>List of Ambulant Vendor</span>
             </SidebarItem>
           </Link>
+          <Link to="/createnotice" style={{ textDecoration: 'none' }}>
+            <SidebarItem active={window.location.pathname === '/createnotice'} isSidebarOpen={isSidebarOpen}>
+              <FaUserAlt className='icon' />
+              <span>Create Notice</span>
+            </SidebarItem>
+          </Link>
           <Link to="/vendorsviolation" style={{ textDecoration: 'none' }}>
             <SidebarItem active={window.location.pathname === '/vendorsviolation'} isSidebarOpen={isSidebarOpen}>
               <FaShoppingBag className='icon' />
@@ -224,6 +230,12 @@ const Dashboard = ({ children }) => { // <-- Destructure children here
             <SidebarItem active={window.location.pathname === '/history'} isSidebarOpen={isSidebarOpen}>
               <FaThList className='icon' />
               <span>History of Vendors Payment</span>
+            </SidebarItem>
+          </Link>
+          <Link to="/rentDetails" style={{ textDecoration: 'none' }}>
+            <SidebarItem active={window.location.pathname === '/rentDetails'} isSidebarOpen={isSidebarOpen}>
+              <FaThList className='icon' />
+              <span>Rent Details</span>
             </SidebarItem>
           </Link>
         </SidebarMenu>

@@ -52,6 +52,7 @@ const ListsOfStallHolders = () => {
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
   };
+  
 
   return (
     <div className="collector-container">
@@ -95,7 +96,7 @@ const ListsOfStallHolders = () => {
                 <td>{stall.date}</td>
                 <td>{stall.status}</td>
                 <td>
-                  <Link to={`/view-payment/${stall.id}`} className="view-button">
+                  <Link to={`/paymentReport/${stall.id}`} className="view-button">
                     <FontAwesomeIcon icon={faEye} size="s" />
                   </Link>
                 </td>

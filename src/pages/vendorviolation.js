@@ -4,7 +4,7 @@ import { stallholderDb } from '../config/firebase'; // Import the Firestore inst
 
 const styles = {
   vendorViolation: {
-    padding: '20px',
+    padding: '50px',
     border: '1px solid #ccc',
     borderRadius: '5px',
     maxWidth: '600px',
@@ -12,7 +12,7 @@ const styles = {
     fontFamily: 'Arial, sans-serif',
   },
   header: {
-    fontSize: '20px',
+    fontSize: '25px',
     fontWeight: 'bold',
     marginBottom: '20px',
     textAlign: 'center',
@@ -219,6 +219,7 @@ const VendorViolation = () => {
     return timestamp.toDate().toISOString().split('T')[0];
   };
 
+  
 
   const handlePayorSelect = (payorName, unit, billingCycle, stallInfo) => {
     const userDoc = users.find(user => `${user.firstName} ${user.lastName}` === payorName);
@@ -360,6 +361,7 @@ const handleKeyDown = (e) => {
       <div style={styles.header}>
         <p>Vendor Violations</p>
       </div>
+
       <form style={styles.content} onSubmit={handleSubmit}>
         <div style={styles.formGroup}>
           <label style={styles.label}>Date of Payment</label>

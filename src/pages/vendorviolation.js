@@ -91,6 +91,7 @@ const styles = {
 const VendorViolation = () => {
   const currentDate = new Date().toISOString().split('T')[0]; // Get the current date in YYYY-MM-DD format
 
+
   const [formData, setFormData] = useState({
     dateOfPayment: currentDate,
     payor: '',
@@ -102,14 +103,17 @@ const VendorViolation = () => {
     paymentMethod: '',
     expectedPaymentDate: '',
     dateOfRegistration: '', 
-    imageUrl: '', // New state to store image URL
+    imageUrl: '', 
+    pastDue: '', // New field for reason
+    penaltyPeriod: '', // New field for penalty period
+    totalAmount: '', // New field for total amount
   });
 
   const [suggestions, setSuggestions] = useState([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [users, setUsers] = useState([]);
-  const [imagePreview, setImagePreview] = useState(null); // For image preview
+  const [imagePreview, setImagePreview] = useState(null); 
 
   const suggestionRef = useRef();
 
@@ -117,15 +121,18 @@ const VendorViolation = () => {
     const fetchUsers = async () => {
       const usersCollection = collection(stallholderDb, 'users');
       const userSnapshot = await getDocs(usersCollection);
-      const usersList = userSnapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id,
-      }));
+      const usersList = userSnapshot.docs
+        .map(doc => ({
+          ...doc.data(),
+          id: doc.id,
+        }))
+        .filter(user => user.stallInfo.status === 'Occupied'); // Filter by 'Occupied' status
       setUsers(usersList);
     };
-
+  
     fetchUsers();
   }, []);
+  
   
 
   useEffect(() => {
@@ -170,7 +177,28 @@ const VendorViolation = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === 'payor') {
+    if (name === 'penaltyPeriod') {
+      // Automatically set the penalty percentage based on the selected period
+      let penaltyPercentage;
+      switch (value) {
+        case 'Day':
+          penaltyPercentage = '100%';
+          break;
+        case 'Week':
+          penaltyPercentage = '25%';
+          break;
+        case 'Month':
+          penaltyPercentage = '5%';
+          break;
+        default:
+          penaltyPercentage = '';
+      }
+      setFormData((prevData) => ({
+        ...prevData,
+        penaltyPeriod: value,
+        penaltyPercentage: penaltyPercentage, // Update penalty percentage
+      }));
+    } else if (name === 'payor') {
       const matchingUsers = users.filter(user =>
         (`${user.firstName} ${user.lastName}`.toLowerCase().startsWith(value.toLowerCase()))
       );
@@ -185,64 +213,101 @@ const VendorViolation = () => {
     }));
   };
 
+  
+
   const timestampToDate = (timestamp) => {
     return timestamp.toDate().toISOString().split('T')[0];
   };
 
 
-const handlePayorSelect = async (payorName, unit, billingCycle, dateOfRegistration) => {
-  const userDoc = users.find(user => `${user.firstName} ${user.lastName}` === payorName);
-
-  if (userDoc) {
-    const dateOfRegistrationStr = timestampToDate(userDoc.dateOfRegistration);
-    const expectedPaymentDate = calculateExpectedPaymentDate(dateOfRegistrationStr, billingCycle);
-
-    const ratePerMeter = userDoc.ratePerMeter; 
-    const stallSize = userDoc.stallInfo?.stallSize; 
-    const amount = ratePerMeter * stallSize;
-
-    setFormData((prevData) => ({
-      ...prevData,
-      payor: payorName,
-      unit: unit,
-      rentOption: billingCycle,
-      expectedPaymentDate: expectedPaymentDate,
-      amount: amount.toFixed(2),
-    }));
-  } else {
-    console.error('User not found:', payorName);
-  }
-
-  setSuggestions([]);
-  setShowSuggestions(false);
-};
+  const handlePayorSelect = (payorName, unit, billingCycle, stallInfo) => {
+    const userDoc = users.find(user => `${user.firstName} ${user.lastName}` === payorName);
   
+    if (userDoc && stallInfo) {
+      // Check if ratePerMeter and stallSize exist and have valid values
+      const ratePerMeterStr = stallInfo.ratePerMeter || ''; // Default to an empty string if undefined
+      const stallSizeStr = stallInfo.stallSize || ''; // Default to an empty string if undefined
+  
+      // Clean and convert ratePerMeter and stallSize to numbers
+      const ratePerMeter = stallInfo?.ratePerMeter ? parseFloat(stallInfo.ratePerMeter.replace(/[₱,]/g, '').trim()) : 0;
+      const stallSize = stallInfo?.stallSize ? parseFloat(stallInfo.stallSize.replace(/[^\d.]/g, '').trim()) : 0;
+  
+      if (!isNaN(ratePerMeter) && !isNaN(stallSize)) {
+        const dateOfRegistrationStr = timestampToDate(userDoc.dateOfRegistration);
+        const expectedPaymentDate = calculateExpectedPaymentDate(dateOfRegistrationStr, billingCycle);
+  
+        // Calculate the billing cycle days
+        let billingCycleDays = 0;
+        switch (billingCycle) {
+          case 'Daily':
+            billingCycleDays = 1; // 1 day
+            break;
+          case 'Weekly':
+            billingCycleDays = 7; // 7 days
+            break;
+          case 'Monthly':
+            billingCycleDays = 30; // Approximation for a month
+            break;
+          default:
+            break;
+        }
+  
+        // Calculate amount based on ratePerMeter, stallSize, and billingCycleDays
+        const amount = ratePerMeter * stallSize * billingCycleDays;
+  
+        // Calculate penalty based on penalty percentage
+        const penalty = (amount * (parseFloat(formData.penaltyPercentage) / 100)) || 0;
+        console.log('Penalty Percentage:', formData.penaltyPercentage);
+        
+        // Calculate total amount after penalty
+        const totalAmount = amount - penalty;
 
-  const handleKeyDown = (e) => {
-    if (showSuggestions) {
-      if (e.key === 'ArrowDown') {
-        setActiveSuggestionIndex((prevIndex) =>
-          prevIndex === suggestions.length - 1 ? 0 : prevIndex + 1
-        );
-        e.preventDefault(); // Prevent the cursor from moving inside the input
-      } else if (e.key === 'ArrowUp') {
-        setActiveSuggestionIndex((prevIndex) =>
-          prevIndex <= 0 ? suggestions.length - 1 : prevIndex - 1
-        );
-        e.preventDefault();
-      } else if (e.key === 'Enter' && activeSuggestionIndex !== -1) {
-        e.preventDefault(); // Prevent form submission when selecting a suggestion
-        const selectedUser = suggestions[activeSuggestionIndex];
-        handlePayorSelect(
-          `${selectedUser.firstName} ${selectedUser.lastName}`,
-          selectedUser.stallInfo.location,
-          selectedUser.billingCycle,
-          selectedUser.dateOfRegistration
-        );
-        setActiveSuggestionIndex(-1);
+        // Automatically fill the amount field
+        setFormData((prevData) => ({
+          ...prevData,
+          payor: payorName,
+          unit: unit,
+          rentOption: billingCycle,
+          expectedPaymentDate: expectedPaymentDate,
+          amount: amount.toFixed(2), // Fill the amount field
+          totalAmount: totalAmount.toFixed(2), // Fill the total amount field
+        }));
+      } else {
+        console.error('Invalid rate or stall size:', ratePerMeterStr, stallSizeStr);
       }
+    } else {
+      console.error('User or stallInfo not found:', payorName, stallInfo);
     }
-  };
+  
+    setShowSuggestions(false); // Close suggestions after selecting payor
+  };   
+
+
+const handleKeyDown = (e) => {
+  if (showSuggestions) {
+    if (e.key === 'ArrowDown') {
+      setActiveSuggestionIndex((prevIndex) =>
+        prevIndex === suggestions.length - 1 ? 0 : prevIndex + 1
+      );
+      e.preventDefault(); // Prevent the cursor from moving inside the input
+    } else if (e.key === 'ArrowUp') {
+      setActiveSuggestionIndex((prevIndex) =>
+        prevIndex <= 0 ? suggestions.length - 1 : prevIndex - 1
+      );
+      e.preventDefault();
+    } else if (e.key === 'Enter' && activeSuggestionIndex !== -1) {
+      e.preventDefault(); // Prevent form submission when selecting a suggestion
+      const selectedUser = suggestions[activeSuggestionIndex];
+      handlePayorSelect(
+        `${selectedUser.firstName} ${selectedUser.lastName}`,
+        selectedUser.stallInfo.location,
+        selectedUser.billingCycle,
+        selectedUser.stallInfo // Pass the correct stallInfo
+      );
+      setActiveSuggestionIndex(-1);
+    }
+  }
+};
 
   // New function to handle image upload
   const handleImageUpload = (e) => {
@@ -262,24 +327,11 @@ const handlePayorSelect = async (payorName, unit, billingCycle, dateOfRegistrati
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
-    // Validate that all required fields are filled before submitting
-    const { dateOfPayment, payor, rentOption, unit, penaltyPercentage, amount, paymentMethod } = formData;
-  
-    if (!dateOfPayment || !payor || !rentOption || !unit || !penaltyPercentage || !amount || !paymentMethod) {
-      alert('Please fill in all required fields.');
-      return; // Stop submission if validation fails
-    }
-  
+
     try {
-      // Add the form data to the vendorViolation collection in Firestore
-      const vendorViolationCollection = collection(stallholderDb, 'vendorViolation');
-      await addDoc(vendorViolationCollection, formData);
-  
-      // Display success message (optional)
-      alert('Vendor Violation record added successfully!');
-      
-      // Reset form after submission (optional)
+        await addDoc(collection(stallholderDb, 'violations'), {
+          ...formData, // Include formData when saving
+        });      alert('Violation saved successfully!');
       setFormData({
         dateOfPayment: currentDate,
         payor: '',
@@ -292,10 +344,13 @@ const handlePayorSelect = async (payorName, unit, billingCycle, dateOfRegistrati
         expectedPaymentDate: '',
         dateOfRegistration: '',
         imageUrl: '',
+        pastDue: '',
+        penaltyPeriod: '',
+        totalAmount: '', // New field for total amount
       });
-      setImagePreview(null);
     } catch (error) {
-      console.error('Error adding document: ', error);
+      console.error('Error saving violation:', error);
+      alert('Error saving violation. Please try again.');
     }
   };
 
@@ -357,23 +412,7 @@ const handlePayorSelect = async (payorName, unit, billingCycle, dateOfRegistrati
           </div>
           <div style={styles.column}>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Rent Option</label>
-              <input
-                type="text"
-                name="rentOption"
-                value={formData.rentOption}
-                onChange={handleChange}
-                style={styles.input}
-                disabled
-              />
-            </div>
-          </div>
-        </div>
-
-        <div style={styles.twoColumnRow}>
-          <div style={styles.column}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Unit</label>
+            <label style={styles.label}>Unit</label>
               <input
                 type="text"
                 name="unit"
@@ -384,29 +423,16 @@ const handlePayorSelect = async (payorName, unit, billingCycle, dateOfRegistrati
               />
             </div>
           </div>
-
-          <div style={styles.column}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Penalty %</label>
-              <input
-                type="text"
-                name="penaltyPercentage"
-                value={formData.penaltyPercentage}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-          </div>
         </div>
 
         <div style={styles.twoColumnRow}>
           <div style={styles.column}>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Amount</label>
+            <label style={styles.label}>Rent Option</label>
               <input
                 type="text"
-                name="amount"
-                value={formData.amount}
+                name="rentOption"
+                value={formData.rentOption}
                 onChange={handleChange}
                 style={styles.input}
                 disabled
@@ -416,35 +442,106 @@ const handlePayorSelect = async (payorName, unit, billingCycle, dateOfRegistrati
 
           <div style={styles.column}>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Upload Evidence</label>
+            <label style={styles.label}>Amount</label>
+              <input
+                type="text"
+                name="amount"
+                value={formData.amount}
+                onChange={handleChange}
+                style={styles.input}
+                disabled
+              />           
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.twoColumnRow}>
+          <div style={styles.column}>
+            <div style={styles.formGroup}>
+            <label style={styles.label}>Past Due</label>
+            <select
+                name="penaltyPeriod"
+                value={formData.penaltyPeriod}
+                onChange={handleChange}
+                style={styles.select}
+              >
+                <option value="">Select Penalty Period</option>
+                <option value="Day">Day</option>
+                <option value="Week">Week</option>
+                <option value="Month">Month</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={styles.column}>
+            <div style={styles.formGroup}>
+            <label style={styles.label}>Penalty %</label>
+              <input
+                type="text"
+                name="penaltyPercentage"
+                value={formData.penaltyPercentage}
+                onChange={handleChange}
+                style={styles.input}
+                disabled
+              />
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.twoColumnRow}>
+          <div style={styles.column}>
+            <div style={styles.formGroup}>
+            <label style={styles.label}>Upload Evidence</label>
               <input 
               type="file" 
               onChange={handleImageUpload} 
               accept="image/*" />
             </div>
           </div>
-        </div>
 
-        {imagePreview && (
-          <div style={{ marginBottom: '15px' }}>
-            <img src={imagePreview} alt="Uploaded Preview" style={{ maxWidth: '100%', borderRadius: '5px' }} />
+          <div style={styles.column}>
+            <div style={styles.formGroup}>
+            {imagePreview && (
+                <div style={{ marginBottom: '15px' }}>
+                  <img src={imagePreview} alt="Uploaded Preview" style={{ maxWidth: '50%', borderRadius: '5px' }} />
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>    
+           
+        <div style={styles.twoColumnRow}>
+          <div style={styles.column}>
+            <div style={styles.formGroup}>
+            <label style={styles.label}>Payment Method</label>
+              <select
+                name="paymentMethod"
+                value={formData.paymentMethod}
+                onChange={handleChange}
+                style={styles.select}
+              >
+                <option value="">Select Payment Method</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank">Bank</option>
+                <option value="Gcash">Gcash</option>
+              </select>
+            </div>
+          </div>
 
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Payment Method</label>
-          <select
-            name="paymentMethod"
-            value={formData.paymentMethod}
-            onChange={handleChange}
-            style={styles.select}
-          >
-            <option value="">Select Payment Method</option>
-            <option value="Cash">Cash</option>
-            <option value="Bank">Bank</option>
-            <option value="Gcash">Gcash</option>
-          </select>
-        </div>
+          <div style={styles.column}>
+            <div style={styles.formGroup}>
+            <label style={styles.label}>Total Amount</label>
+              <input
+                type="text"
+                name="totalAmount"
+                value={formData.totalAmount}
+                onChange={handleChange}
+                style={styles.input}
+                disabled
+              />
+            </div>
+          </div>
+        </div>       
 
         <div style={styles.formGroup}>
           <label style={styles.label}>Expected Payment Date</label>

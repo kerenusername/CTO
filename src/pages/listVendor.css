@@ -2,6 +2,7 @@
 .collector-container {
     display: flex;
     min-height: 100vh;
+    padding: 50px;
     background-color: #f4f5f7;
 }
 

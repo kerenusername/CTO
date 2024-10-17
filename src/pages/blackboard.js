@@ -84,9 +84,9 @@ const Blackboard = () => {
 
   // Sample data for recent transactions
   const recentTransactions = [
-    { id: 1, date: '2024-10-10', amount: 200, status: 'Paid' },
-    { id: 2, date: '2024-10-11', amount: 150, status: 'Pending' },
-    { id: 3, date: '2024-10-12', amount: 300, status: 'Failed' },
+    { id: 1, name: 'Keren', date: '2024-10-10', amount: 200, status: 'Paid' },
+    { id: 2, name: 'Daniela', date: '2024-10-11', amount: 150, status: 'Pending' },
+    { id: 3, name: 'Julia', date: '2024-10-12', amount: 300, status: 'Failed' },
   ];
 
   return (
@@ -114,6 +114,7 @@ const Blackboard = () => {
           <thead>
             <tr>
               <th>ID</th>
+              <th>Name</th>
               <th>Date</th>
               <th>Amount</th>
               <th>Status</th>
@@ -123,6 +124,7 @@ const Blackboard = () => {
             {recentTransactions.map(transaction => (
               <tr key={transaction.id}>
                 <td>{transaction.id}</td>
+                <td>{transaction.name}</td>
                 <td>{transaction.date}</td>
                 <td>${transaction.amount}</td>
                 <td>{transaction.status}</td>

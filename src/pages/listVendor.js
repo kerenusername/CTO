@@ -14,6 +14,9 @@ const ListsOfStallHolders = () => {
   const [stallHolders, setStallHolders] = useState([]);
   const [filteredStallHolders, setFilteredStallHolders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUnit, setSelectedUnit] = useState(''); // For filtering by unit
+  const units = ['Unit 1', 'Unit 2', 'Unit 3', 'Barracks', 'Freedom']; // Unit options
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -43,14 +46,19 @@ const ListsOfStallHolders = () => {
   useEffect(() => {
     const filteredData = stallHolders.filter(
       (stall) =>
-        stall.firstName.toLowerCase().includes(searchTerm.toLowerCase()) && 
-        stall.status === 'Occupied'
+        stall.firstName.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        stall.status === 'Occupied' &&
+        (selectedUnit === '' || stall.location === selectedUnit) // Match unit if selected
     );
     setFilteredStallHolders(filteredData);
-  }, [searchTerm, stallHolders]);
+  }, [searchTerm, selectedUnit, stallHolders]);
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
+  };
+
+  const handleUnitChange = (event) => {
+    setSelectedUnit(event.target.value);
   };
   
 
@@ -67,6 +75,12 @@ const ListsOfStallHolders = () => {
               value={searchTerm}
               onChange={handleSearchChange}
             />
+            <select className="unit-filter" value={selectedUnit} onChange={handleUnitChange}>
+              <option value="">All Units</option>
+              {units.map((unit, index) => (
+                <option key={index} value={unit}>{unit}</option>
+              ))}
+            </select>
             <button className="search-button">
               <FontAwesomeIcon icon={faMagnifyingGlass} size="xl" />
             </button>

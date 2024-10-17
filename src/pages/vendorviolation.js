@@ -261,7 +261,7 @@ const VendorViolation = () => {
         console.log('Penalty Percentage:', formData.penaltyPercentage);
         
         // Calculate total amount after penalty
-        const totalAmount = amount - penalty;
+        const totalAmount = amount + penalty;
 
         // Automatically fill the amount field
         setFormData((prevData) => ({

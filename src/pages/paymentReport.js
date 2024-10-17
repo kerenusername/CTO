@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons'; // Import the back arrow icon
+import { doc, getDoc } from 'firebase/firestore'; // Import Firebase Firestore methods
+import { stallholderDb } from '../config/firebase'; // Import your Firestore instance
 
 // Your styled components
 const ReportContainer = styled.div`
@@ -56,14 +58,20 @@ const PaymentReport = () => {
   const { id } = useParams(); // Get the ID from the URL
   const [payments, setPayments] = useState([]);
   const navigate = useNavigate(); // Initialize the navigate function for navigation
+  const [stallHolderName, setStallHolderName] = useState(''); // State to hold the stallholder's name
 
   useEffect(() => {
     const fetchPayments = async () => {
-      // Replace with your logic to fetch payments based on the stall holder ID
-      // For example, using Firestore:
-      // const querySnapshot = await getDocs(collection(stallholderDb, 'payments'), where('stallId', '==', id));
-      // const paymentData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
+      const docRef = doc(stallholderDb, 'users', id); // Reference to the Firestore document
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const stallHolderData = docSnap.data();
+        const firstName = stallHolderData.firstName || '';
+        const lastName = stallHolderData.lastName || '';
+        setStallHolderName(`${firstName} ${lastName}`);
+      } else {
+        console.log("No such document!");
+      }
       // Dummy data for demonstration purposes
       const paymentData = [
         { id: '1', date: new Date(), vendorName: 'Vendor A', amount: 100, status: 'Paid' },
@@ -81,7 +89,7 @@ const PaymentReport = () => {
       <BackButton onClick={() => navigate(-1)}>
         <FontAwesomeIcon icon={faArrowLeft} /> Back
       </BackButton>
-      <Title>Payment Report for Stall Holder ID: {id}</Title>
+      <Title>Payment Report for Stall Holder: {stallHolderName}</Title>
       <Table>
         <thead>
           <tr>
